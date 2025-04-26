@@ -14,10 +14,15 @@ class QuizMultipleChoice(BaseModel):
     alternatives: List[List[str]] = Field(description="The quiz alternatives for each question as a list of lists")
     answers: List[str] = Field(description="The quiz answers")
 
+class QuizOpenEnded(BaseModel):
+    quiz_text: str = Field(description="The quiz text")
+    questions: List[str] = Field(description="The open-ended quiz questions")
+    reference_answers: List[str] = Field(description="Reference answers for evaluation purposes")
+
 def create_the_quiz_prompt_template():
     "Prompt minta készítése"
 
-    template = """You are an expert quiz maker for IT engineering. Let's think step by step and create
+    template = """You are an expert quiz maker. Let's think step by step and create
     a quiz with {num_quest} {quiz_type} questions about the following concept/content: {quiz_context}
     
     ### Language:
@@ -27,6 +32,8 @@ def create_the_quiz_prompt_template():
     The questions should be clear and concise, and the answers should be accurate and relevant.
     True-false questions should be phrased in a way that requires the student to think critically about the topic.
     The distribution of true and false answers should be roughly balanced, but not exactly 50-50 — varying around a 40%–60% to 60%–40 range.
+    Design questions suitable for students at an intermediate level of understanding of the topic, ensuring they are neither too basic nor overly complex.
+    Verify that all questions and answers are factually accurate and directly relevant to the provided quiz_context. Avoid generating questions based on assumptions or external knowledge not present in the context.
 
     The format of the quiz could be one of the following:
     -Multiple-choice:
@@ -59,6 +66,15 @@ def create_the_quiz_prompt_template():
         - Answers:
             - 1. False
             - 2. True
+    - Open-ended:
+        - Questions:
+            <Question1>
+        - Reference Answers:
+            <Reference Answer1>
+        Example:
+            - 1. Explain the main difference between RISC and CISC architectures.
+        Reference Answers:
+            - 1. RISC uses a simplified instruction set with fixed-length instructions, aiming for faster execution, while CISC uses complex instructions that can perform multiple operations, often requiring more clock cycles.
         """
     prompt = ChatPromptTemplate.from_template(template)
     prompt.format(num_quest=3, quiz_type="multiple-choice", quiz_context="CPU Architecture", quiz_language="English")

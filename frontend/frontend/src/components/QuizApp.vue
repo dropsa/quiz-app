@@ -5,16 +5,7 @@
       <p class="text-gray-600 mb-8 text-center">Generate a quiz based on your context</p>
 
       <div class="space-y-6">
-        <!-- API Key Input -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">OpenAI API Key</label>
-          <input
-            type="password"
-            v-model="apiKey"
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
-            placeholder="Enter your API key"
-          />
-        </div>
+
 
         <!-- Context Textarea -->
         <div>
@@ -39,7 +30,6 @@
           <p v-if="fileName" class="text-sm text-gray-600 mt-2">Selected file: {{ fileName }}</p>
         </div>
 
-        
         <!-- Quiz Language Select -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">Quiz Language</label>
@@ -49,7 +39,6 @@
           >
             <option value="English">English</option>
             <option value="Hungarian">Hungarian</option>
-            <!-- Add more languages as needed -->
           </select>
         </div>
 
@@ -62,6 +51,7 @@
           >
             <option value="multiple-choice">Multiple Choice</option>
             <option value="true-false">True/False</option>
+            <option value="open-ended">Open-Ended</option>
           </select>
         </div>
 
@@ -91,6 +81,13 @@
           >
             Show Answers
           </button>
+          <button
+            v-if="quizType === 'open-ended' && questions.length > 0"
+            @click="evaluateAnswers"
+            class="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition font-semibold"
+          >
+            Evaluate Answers
+          </button>
         </div>
 
         <!-- Questions Display -->
@@ -104,7 +101,7 @@
               :class="{
                 'bg-green-100': showAnswerFlag && isCorrect(index),
                 'bg-red-100': showAnswerFlag && !isCorrect(index) && userAnswers[index] !== undefined,
-                'bg-gray-50': !showAnswerFlag || userAnswers[index] === undefined
+                'bg-gray-50': !showAnswerFlag || userAnswers[index] === undefined || quizType === 'open-ended'
               }"
             >
               <p class="text-gray-700 mb-4">{{ question }}</p>
@@ -144,6 +141,17 @@
                   </button>
                 </div>
               </div>
+              <div v-else-if="quizType === 'open-ended'" class="space-y-2">
+                <textarea
+                  v-model="userAnswers[index]"
+                  rows="4"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  placeholder="Type your answer here"
+                ></textarea>
+                <div v-if="evaluations[index]" class="mt-2 p-4 bg-gray-50 rounded-lg">
+                  <p class="text-gray-700">{{ evaluations[index] }}</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -163,7 +171,6 @@
 export default {
   data() {
     return {
-      apiKey: "",
       context: "",
       quizType: "true-false",
       quizLanguage: "English",
@@ -173,8 +180,9 @@ export default {
       alternatives: [],
       showAnswerFlag: false,
       userAnswers: {},
-      file: null, // Store the raw file
-      fileName: "", // Store the name of the uploaded file
+      evaluations: {}, // Store evaluation feedback for open-ended questions
+      file: null,
+      fileName: "",
     };
   },
   methods: {
@@ -184,20 +192,16 @@ export default {
 
       this.fileName = file.name;
       this.file = file;
-      console.log("File selected:", this.fileName); // Debug log
+      console.log("File selected:", this.fileName);
     },
     async generateQuiz() {
       this.showAnswerFlag = false;
       this.userAnswers = {};
+      this.evaluations = {}; // Reset evaluations
       this.alternatives = [];
-      if (!this.apiKey) {
-        alert("Please enter your OpenAI API key");
-        return;
-      }
 
       try {
         const formData = new FormData();
-        formData.append("api_key", this.apiKey);
         formData.append("context", this.context);
         formData.append("quiz_type", this.quizType);
         formData.append("num_questions", this.numQuestions);
@@ -206,7 +210,7 @@ export default {
           formData.append("file", this.file);
         }
 
-        console.log("Sending request with file:", this.fileName, this.fileName, "language:", this.quizLanguage ); // Debug log
+        console.log("Sending request with file:", this.fileName, "language:", this.quizLanguage);
         const response = await fetch("http://localhost:5000/generate-quiz", {
           method: "POST",
           body: formData,
@@ -217,7 +221,7 @@ export default {
         }
 
         const data = await response.json();
-        console.log("Backend response:", data); // Debug log
+        console.log("Backend response:", data);
 
         if (data.error) {
           alert(`Error from backend: ${data.error}`);
@@ -225,13 +229,44 @@ export default {
         }
 
         this.questions = data.questions || [];
-        this.answers = data.answers || [];
+        this.answers = data.answers || data.reference_answers || []; // Support reference answers for open-ended
         if (this.quizType === "multiple-choice") {
           this.alternatives = data.alternatives || [];
         }
       } catch (error) {
         console.error("Error generating quiz:", error);
         alert("Failed to generate quiz. Check the console for details.");
+      }
+    },
+    async evaluateAnswers() {
+      try {
+        const response = await fetch("http://localhost:5000/evaluate-answers", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            questions: this.questions,
+            user_answers: this.userAnswers,
+            context: this.context,
+            quiz_language: this.quizLanguage,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (data.error) {
+          alert(`Error from backend: ${data.error}`);
+          return;
+        }
+
+        this.evaluations = data.evaluations || {};
+      } catch (error) {
+        console.error("Error evaluating answers:", error);
+        alert("Failed to evaluate answers. Check the console for details.");
       }
     },
     showAnswers() {
@@ -241,6 +276,9 @@ export default {
       this.$set(this.userAnswers, index, value);
     },
     isCorrect(index) {
+      if (this.quizType === "open-ended") {
+        return false; // Open-ended questions are evaluated separately
+      }
       if (this.userAnswers[index] === undefined || this.answers[index] === undefined) {
         return false;
       }
