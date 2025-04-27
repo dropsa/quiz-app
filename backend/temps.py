@@ -19,6 +19,10 @@ class QuizOpenEnded(BaseModel):
     questions: List[str] = Field(description="The open-ended quiz questions")
     reference_answers: List[str] = Field(description="Reference answers for evaluation purposes")
 
+class EvaluationResult(BaseModel):
+    Feedback: str = Field(description="Feedback on the student's answer")
+    IsCorrect: str = Field(description="Whether the answer is correct: true, false, or partially_correct")
+
 def create_the_quiz_prompt_template():
     "Prompt minta készítése"
 

@@ -5,8 +5,6 @@
       <p class="text-gray-600 mb-8 text-center">Generate a quiz based on your context</p>
 
       <div class="space-y-6">
-
-
         <!-- Context Textarea -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">Quiz Context</label>
@@ -98,11 +96,7 @@
               v-for="(question, index) in questions"
               :key="index"
               class="p-4 rounded-lg transition-colors"
-              :class="{
-                'bg-green-100': showAnswerFlag && isCorrect(index),
-                'bg-red-100': showAnswerFlag && !isCorrect(index) && userAnswers[index] !== undefined,
-                'bg-gray-50': !showAnswerFlag || userAnswers[index] === undefined || quizType === 'open-ended'
-              }"
+              :class="getQuestionBgClass(index)"
             >
               <p class="text-gray-700 mb-4">{{ question }}</p>
               <div v-if="quizType === 'true-false'" class="flex justify-center space-x-2">
@@ -148,8 +142,13 @@
                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                   placeholder="Type your answer here"
                 ></textarea>
-                <div v-if="evaluations[index]" class="mt-2 p-4 bg-gray-50 rounded-lg">
-                  <p class="text-gray-700">{{ evaluations[index] }}</p>
+                <div v-if="evaluations[index]" class="mt-4 p-4 rounded-lg bg-gray-100">
+                  <h3 class="text-lg font-semibold mb-2">Feedback</h3>
+                  <p class="text-gray-700">{{ evaluations[index].feedback }}</p>
+                  <div class="mt-2">
+                    <span class="font-bold">Evaluation:</span>
+                    <span :class="getEvaluationClass(evaluations[index].is_correct)">{{ evaluations[index].is_correct }}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -157,7 +156,7 @@
         </div>
 
         <!-- Answers Display -->
-        <div v-if="showAnswerFlag && answers.length > 0" class="mt-8">
+        <div v-if="showAnswerFlag && quizType !== 'open-ended' && answers.length > 0" class="mt-8">
           <h2 class="text-xl font-semibold text-gray-800 mb-4">Answers</h2>
           <hr class="border-gray-300 mb-4" />
           <pre class="bg-gray-50 p-4 rounded-lg text-gray-700">{{ answers }}</pre>
@@ -248,6 +247,7 @@ export default {
           body: JSON.stringify({
             questions: this.questions,
             user_answers: this.userAnswers,
+            reference_answers: this.quizType === "open-ended" ? this.answers : [],
             context: this.context,
             quiz_language: this.quizLanguage,
           }),
@@ -277,7 +277,8 @@ export default {
     },
     isCorrect(index) {
       if (this.quizType === "open-ended") {
-        return false; // Open-ended questions are evaluated separately
+        return this.evaluations[index]?.is_correct === "true" || 
+               this.evaluations[index]?.is_correct === "partially_correct";
       }
       if (this.userAnswers[index] === undefined || this.answers[index] === undefined) {
         return false;
@@ -289,6 +290,47 @@ export default {
         const userAnswer = this.userAnswers[index].toLowerCase().trim();
         const backendAnswer = this.answers[index].toLowerCase().trim();
         return userAnswer === backendAnswer;
+      }
+    },
+    getQuestionBgClass(index) {
+      if (!this.showAnswerFlag) {
+        return 'bg-gray-50';
+      }
+      if (this.quizType !== 'open-ended') {
+        if (this.userAnswers[index] === undefined) {
+          return 'bg-gray-50';
+        } else if (this.isCorrect(index)) {
+          return 'bg-green-100';
+        } else {
+          return 'bg-red-100';
+        }
+      } else {
+        if (!this.evaluations[index]) {
+          return 'bg-gray-50';
+        } else {
+          switch (this.evaluations[index].is_correct) {
+            case 'true':
+              return 'bg-green-100';
+            case 'partially_correct':
+              return 'bg-yellow-100';
+            case 'false':
+              return 'bg-red-100';
+            default:
+              return 'bg-gray-50';
+          }
+        }
+      }
+    },
+    getEvaluationClass(status) {
+      switch (status) {
+        case 'true':
+          return 'text-green-600';
+        case 'false':
+          return 'text-red-600';
+        case 'partially_correct':
+          return 'text-orange-600';
+        default:
+          return 'text-gray-600';
       }
     },
   },

@@ -7,7 +7,7 @@ from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import ChatPromptTemplate
-from temps import create_the_quiz_prompt_template, create_quiz_chain, QuizMultipleChoice, QuizTrueFalse, QuizOpenEnded
+from temps import create_the_quiz_prompt_template, create_quiz_chain, QuizMultipleChoice, QuizTrueFalse, QuizOpenEnded, EvaluationResult
 import PyPDF2
 from dotenv import load_dotenv
 
@@ -135,7 +135,9 @@ def evaluate_answers():
         data = request.get_json()
         questions = data.get("questions", [])
         user_answers = data.get("user_answers", {})
-        reference_answers = data.get("reference_answers", [])  # Open-endednél is kell!
+        reference_answers = data.get("reference_answers", [])
+        quiz_context = data.get("context", "")
+        quiz_language = data.get("quiz_language", "English")
 
         if not questions:
             return jsonify({"error": "No questions provided"}), 400
@@ -147,13 +149,63 @@ def evaluate_answers():
             if str(i) not in user_answers or not user_answers[str(i)].strip():
                 return jsonify({"error": f"Answer missing for question {i+1}"}), 400
 
-        # Dummy értékelés minden kérdésre
+        # Inicializáld a GPT modellt
+        llm = ChatOpenAI(model="gpt-4o", temperature=0.0)
+
+        # Új prompt sablon az open-ended válaszok kiértékeléséhez
+        EVALUATION_PROMPT = ChatPromptTemplate.from_template(
+            """You are an expert evaluator. Your task is to evaluate a student's open-ended quiz answer based on the provided context, question, reference answer, and the student's answer. Provide feedback on whether the student's answer is correct, partially correct, or incorrect, and explain why. Keep the feedback concise, clear, and educational, suitable for an intermediate-level student. Return the evaluation in the following language: {quiz_language}.
+
+            ### Context:
+            {quiz_context}
+
+            ### Question:
+            {question}
+
+            ### Reference Answer:
+            {reference_answer}
+
+            ### Student's Answer:
+            {student_answer}
+
+            ### Output Format:
+            - **Feedback**: <Provide a concise explanation of the correctness of the answer and suggestions for improvement if needed.>
+            - **IsCorrect**: <true, false, or partially_correct>
+            """
+        )       
+
         evaluations = {}
         for i in range(len(questions)):
-            evaluations[str(i)] = {
-                "feedback": "The answer is correct",   # ide írjuk, hogy jó a válasz
-                "is_correct": True
-            }
+            # Open-ended kérdések kiértékelése
+            if reference_answers and i < len(reference_answers):
+                try:
+                    # Hívd meg a GPT-t az értékeléshez
+                    chain = EVALUATION_PROMPT | llm.with_structured_output(EvaluationResult)
+                    evaluation = chain.invoke({
+                        "quiz_context": quiz_context,
+                        "question": questions[i],
+                        "reference_answer": reference_answers[i],
+                        "student_answer": user_answers[str(i)],
+                        "quiz_language": quiz_language
+                    })
+
+                    # Az evaluation egy StructuredOutput, feltételezzük, hogy dictionary-t ad vissza
+                    evaluations[str(i)] = {
+                        "feedback": evaluation.Feedback,
+                        "is_correct": evaluation.IsCorrect
+                    }
+                except Exception as e:
+                    print(f"Error evaluating question {i}: {str(e)}")
+                    evaluations[str(i)] = {
+                        "feedback": "Error during evaluation. Please try again.",
+                        "is_correct": False
+                    }
+            else:
+                # Ha nincs referencia válasz, adj vissza alapértelmezett hibát
+                evaluations[str(i)] = {
+                    "feedback": "No reference answer available for evaluation.",
+                    "is_correct": False
+                }
 
         return jsonify({"evaluations": evaluations})
 
