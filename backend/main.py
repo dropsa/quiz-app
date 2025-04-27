@@ -169,7 +169,7 @@ def evaluate_answers():
             {student_answer}
 
             ### Output Format:
-            - **Feedback**: <Provide a concise explanation of the correctness of the answer and suggestions for improvement if needed.>
+            - **Feedback**: <Provide a concise explanation of the correctness of the answer and suggestions for improvement if needed, addressing the user as 'you'.>
             - **IsCorrect**: <true, false, or partially_correct>
             """
         )       
