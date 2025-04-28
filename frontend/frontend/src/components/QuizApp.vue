@@ -41,6 +41,19 @@
           >
             Evaluate Answers
           </button>
+          <button
+            v-if="questions.length > 0"
+            @click="saveQuiz"
+            class="flex-1 bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 transition font-semibold"
+          >
+            Save Quiz
+          </button>
+          <button
+            @click="showSavedQuizzes = true"
+            class="flex-1 bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition font-semibold"
+          >
+            Show Saved Quizzes
+          </button>
         </div>
 
         <QuizQuestions
@@ -60,6 +73,15 @@
           :answers="answers"
           @showAnswers="showAnswers"
         />
+
+        <!-- Saved Quizzes Modal -->
+        <SavedQuizzes
+          v-if="showSavedQuizzes"
+          :savedQuizzes="savedQuizzes"
+          @loadQuiz="loadQuiz"
+          @deleteQuiz="deleteQuiz"
+          @close="showSavedQuizzes = false"
+        />
       </div>
     </div>
   </div>
@@ -69,9 +91,10 @@
 import QuizForm from './QuizForm.vue';
 import QuizQuestions from './QuizQuestions.vue';
 import QuizAnswers from './QuizAnswers.vue';
+import SavedQuizzes from './SavedQuizzes.vue';
 
 export default {
-  components: { QuizForm, QuizQuestions, QuizAnswers },
+  components: { QuizForm, QuizQuestions, QuizAnswers, SavedQuizzes },
   data() {
     return {
       context: '',
@@ -86,7 +109,13 @@ export default {
       evaluations: {},
       file: null,
       fileName: '',
+      savedQuizzes: [],
+      showSavedQuizzes: false,
     };
+  },
+  mounted() {
+    // Load saved quizzes from LocalStorage on component mount
+    this.loadSavedQuizzes();
   },
   methods: {
     async generateQuiz() {
@@ -167,6 +196,45 @@ export default {
     },
     selectAnswer(index, value) {
       this.$set(this.userAnswers, index, value);
+    },
+    saveQuiz() {
+      const quizData = {
+        id: Date.now(), // Unique ID based on timestamp
+        context: this.context,
+        quizType: this.quizType,
+        quizLanguage: this.quizLanguage,
+        numQuestions: this.numQuestions,
+        questions: this.questions,
+        answers: this.answers,
+        alternatives: this.alternatives,
+        createdAt: new Date().toISOString(),
+      };
+      this.savedQuizzes.push(quizData);
+      localStorage.setItem('savedQuizzes', JSON.stringify(this.savedQuizzes));
+      alert('Quiz saved successfully!');
+    },
+    loadSavedQuizzes() {
+      const quizzes = localStorage.getItem('savedQuizzes');
+      if (quizzes) {
+        this.savedQuizzes = JSON.parse(quizzes);
+      }
+    },
+    loadQuiz(quiz) {
+      this.context = quiz.context;
+      this.quizType = quiz.quizType;
+      this.quizLanguage = quiz.quizLanguage;
+      this.numQuestions = quiz.numQuestions;
+      this.questions = quiz.questions;
+      this.answers = quiz.answers;
+      this.alternatives = quiz.alternatives;
+      this.userAnswers = {};
+      this.evaluations = {};
+      this.showAnswerFlag = false;
+      this.showSavedQuizzes = false;
+    },
+    deleteQuiz(quizId) {
+      this.savedQuizzes = this.savedQuizzes.filter((quiz) => quiz.id !== quizId);
+      localStorage.setItem('savedQuizzes', JSON.stringify(this.savedQuizzes));
     },
   },
 };
