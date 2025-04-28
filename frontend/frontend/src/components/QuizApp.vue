@@ -20,40 +20,33 @@
           @update:fileName="fileName = $event"
         />
 
-        <!-- Buttons -->
+        <!-- Gombok új dizájnnal és animációval -->
         <div class="flex space-x-4">
-          <button
-            @click="generateQuiz"
-            class="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-semibold"
-          >
-            Generate Quiz
-          </button>
-          <button
-            @click="showAnswers"
-            class="flex-1 bg-gray-600 text-white py-3 rounded-lg hover:bg-gray-700 transition font-semibold"
-          >
-            Show Answers
-          </button>
-          <button
-            v-if="quizType === 'open-ended' && questions.length > 0"
-            @click="evaluateAnswers"
-            class="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition font-semibold"
-          >
-            Evaluate Answers
-          </button>
-          <button
-            v-if="questions.length > 0"
-            @click="saveQuiz"
-            class="flex-1 bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 transition font-semibold"
-          >
-            Save Quiz
-          </button>
-          <button
-            @click="showSavedQuizzes = true"
-            class="flex-1 bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition font-semibold"
-          >
-            Show Saved Quizzes
-          </button>
+          <transition name="fade">
+            <button @click="generateQuiz" class="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-semibold btn-shadow">
+              Generate Quiz
+            </button>
+          </transition>
+          <transition name="fade">
+            <button v-if="quizType !== 'open-ended' && questions.length > 0" @click="showAnswers" class="flex-1 bg-gray-600 text-white py-3 rounded-lg hover:bg-gray-700 transition font-semibold btn-shadow">
+              Show Answers
+            </button>
+          </transition>
+          <transition name="fade">
+            <button v-if="quizType === 'open-ended' && questions.length > 0" @click="evaluateAnswers" class="flex-1 bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition font-semibold btn-shadow">
+              Evaluate Answers
+            </button>
+          </transition>
+          <transition name="fade">
+            <button v-if="questions.length > 0" @click="saveQuiz" class="flex-1 bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 transition font-semibold btn-shadow">
+              Save Quiz
+            </button>
+          </transition>
+          <transition name="fade">
+            <button @click="showSavedQuizzes = true" class="flex-1 bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition font-semibold btn-shadow">
+              Show Saved Quizzes
+            </button>
+          </transition>
         </div>
 
         <QuizQuestions
@@ -74,7 +67,6 @@
           @showAnswers="showAnswers"
         />
 
-        <!-- Saved Quizzes Modal -->
         <SavedQuizzes
           v-if="showSavedQuizzes"
           :savedQuizzes="savedQuizzes"
@@ -114,7 +106,6 @@ export default {
     };
   },
   mounted() {
-    // Load saved quizzes from LocalStorage on component mount
     this.loadSavedQuizzes();
   },
   methods: {
@@ -199,7 +190,7 @@ export default {
     },
     saveQuiz() {
       const quizData = {
-        id: Date.now(), // Unique ID based on timestamp
+        id: Date.now(),
         context: this.context,
         quizType: this.quizType,
         quizLanguage: this.quizLanguage,
@@ -239,3 +230,18 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.5s ease-in-out;
+}
+.fade-enter, .fade-leave-to {
+  opacity: 0;
+}
+.btn-shadow {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+.btn-shadow:hover {
+  box-shadow: 0 7px 14px rgba(0, 0, 0, 0.1), 0 3px 6px rgba(0, 0, 0, 0.08);
+}
+</style>
