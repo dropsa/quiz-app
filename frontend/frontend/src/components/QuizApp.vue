@@ -20,7 +20,7 @@
           @update:fileName="fileName = $event"
         />
 
-        <!-- Gombok új dizájnnal és animációval -->
+        <!-- Buttons with new design and animation -->
         <div class="flex space-x-4">
           <transition name="fade">
             <button @click="generateQuiz" class="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-semibold btn-shadow">
@@ -49,7 +49,14 @@
           </transition>
         </div>
 
+        <!-- Loading animation -->
+        <div v-if="isLoading" class="flex justify-center mt-4">
+          <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500"></div>
+        </div>
+
+        <!-- Quiz questions -->
         <QuizQuestions
+          v-if="!isLoading && questions.length > 0"
           :questions="questions"
           :quizType="quizType"
           :alternatives="alternatives"
@@ -103,13 +110,27 @@ export default {
       fileName: '',
       savedQuizzes: [],
       showSavedQuizzes: false,
+      isLoading: false, // Added for loading state
     };
+  },
+  watch: {
+    quizType(newType, oldType) {
+      if (newType !== oldType) {
+        this.questions = [];
+        this.answers = [];
+        this.alternatives = [];
+        this.userAnswers = {};
+        this.evaluations = {};
+        this.showAnswerFlag = false;
+      }
+    },
   },
   mounted() {
     this.loadSavedQuizzes();
   },
   methods: {
     async generateQuiz() {
+      this.isLoading = true; // Start loading
       this.showAnswerFlag = false;
       this.userAnswers = {};
       this.evaluations = {};
@@ -148,6 +169,8 @@ export default {
       } catch (error) {
         console.error('Error generating quiz:', error);
         alert('Failed to generate quiz. Check the console for details.');
+      } finally {
+        this.isLoading = false; // Stop loading
       }
     },
     async evaluateAnswers() {
@@ -243,5 +266,16 @@ export default {
 }
 .btn-shadow:hover {
   box-shadow: 0 7px 14px rgba(0, 0, 0, 0.1), 0 3px 6px rgba(0, 0, 0, 0.08);
+}
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 </style>
