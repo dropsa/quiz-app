@@ -20,7 +20,6 @@
           @update:fileName="fileName = $event"
         />
 
-        <!-- Buttons with new design and animation -->
         <div class="flex space-x-4">
           <transition name="fade">
             <button @click="generateQuiz" class="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-semibold btn-shadow">
@@ -47,14 +46,17 @@
               Show Saved Quizzes
             </button>
           </transition>
+          <transition name="fade">
+            <button v-if="questions.length > 0" @click="editMode = !editMode" class="flex-1 bg-yellow-600 text-white py-3 rounded-lg hover:bg-yellow-700 transition font-semibold btn-shadow">
+              {{ editMode ? 'Done Editing' : 'Edit Quiz' }}
+            </button>
+          </transition>
         </div>
 
-        <!-- Loading animation -->
         <div v-if="isLoading" class="flex justify-center mt-4">
           <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500"></div>
         </div>
 
-        <!-- Quiz questions -->
         <QuizQuestions
           v-if="!isLoading && questions.length > 0"
           :questions="questions"
@@ -63,8 +65,14 @@
           :userAnswers="userAnswers"
           :evaluations="evaluations"
           :answers="answers"
+          :editMode="editMode"
+          :editingIndex="editingIndex"
           @selectAnswer="selectAnswer"
           @update:userAnswers="userAnswers = $event"
+          @editQuestion="editingIndex = $event"
+          @addQuestion="editingIndex = -1"
+          @saveQuestion="handleSaveQuestion"
+          @deleteQuestion="deleteQuestion"
           :showAnswerFlag="showAnswerFlag"
         />
 
@@ -110,7 +118,9 @@ export default {
       fileName: '',
       savedQuizzes: [],
       showSavedQuizzes: false,
-      isLoading: false, // Added for loading state
+      isLoading: false,
+      editMode: false,
+      editingIndex: null,
     };
   },
   watch: {
@@ -122,6 +132,8 @@ export default {
         this.userAnswers = {};
         this.evaluations = {};
         this.showAnswerFlag = false;
+        this.editMode = false;
+        this.editingIndex = null;
       }
     },
   },
@@ -130,11 +142,13 @@ export default {
   },
   methods: {
     async generateQuiz() {
-      this.isLoading = true; // Start loading
+      this.isLoading = true;
       this.showAnswerFlag = false;
       this.userAnswers = {};
       this.evaluations = {};
       this.alternatives = [];
+      this.editMode = false;
+      this.editingIndex = null;
 
       try {
         const formData = new FormData();
@@ -170,7 +184,7 @@ export default {
         console.error('Error generating quiz:', error);
         alert('Failed to generate quiz. Check the console for details.');
       } finally {
-        this.isLoading = false; // Stop loading
+        this.isLoading = false;
       }
     },
     async evaluateAnswers() {
@@ -245,10 +259,49 @@ export default {
       this.evaluations = {};
       this.showAnswerFlag = false;
       this.showSavedQuizzes = false;
+      this.editMode = false;
+      this.editingIndex = null;
     },
     deleteQuiz(quizId) {
       this.savedQuizzes = this.savedQuizzes.filter((quiz) => quiz.id !== quizId);
       localStorage.setItem('savedQuizzes', JSON.stringify(this.savedQuizzes));
+    },
+    handleSaveQuestion({ index, data }) {
+      if (index === -1) {
+        this.questions.push(data.question);
+        if (this.quizType === 'multiple-choice') {
+          this.alternatives.push(data.alternatives);
+          this.answers.push(data.answer);
+        } else if (this.quizType === 'true-false') {
+          this.answers.push(data.answer);
+        } else {
+          this.answers.push(data.referenceAnswer);
+        }
+      } else {
+        this.questions[index] = data.question;
+        if (this.quizType === 'multiple-choice') {
+          this.alternatives[index] = data.alternatives;
+          this.answers[index] = data.answer;
+        } else if (this.quizType === 'true-false') {
+          this.answers[index] = data.answer;
+        } else {
+          this.answers[index] = data.referenceAnswer;
+        }
+      }
+      this.userAnswers = {};
+      this.evaluations = {};
+      this.showAnswerFlag = false;
+      this.editingIndex = null;
+    },
+    deleteQuestion(index) {
+      this.questions.splice(index, 1);
+      if (this.quizType === 'multiple-choice') {
+        this.alternatives.splice(index, 1);
+      }
+      this.answers.splice(index, 1);
+      this.userAnswers = {};
+      this.evaluations = {};
+      this.showAnswerFlag = false;
     },
   },
 };
