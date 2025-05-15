@@ -1,4 +1,4 @@
-# Quiz App Laura
+# Quiz App
 
 ## Overview
 Quiz App Laura is a web application designed to generate and evaluate quizzes based on user-provided context or uploaded files. It supports multiple quiz types (multiple-choice, true/false, and open-ended), allows users to save and load quizzes, and provides feedback on open-ended answers using AI-powered evaluation.
